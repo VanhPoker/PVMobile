@@ -21,6 +21,7 @@ import {
   RpcInvocationData,
 } from 'livekit-client'
 import {
+  AudioSession,
   LiveKitRoom,
   useRoomContext,
   useLocalParticipant,
@@ -28,7 +29,11 @@ import {
   useVoiceAssistant,
   useTracks,
   useChat,
+  registerGlobals,
 } from '@livekit/react-native'
+
+// Register globals first
+registerGlobals()
 
 // Local imports
 import { supabase } from "../../services/supabase"
@@ -92,6 +97,24 @@ export default function LiveKitVoiceRoom({
   const internalSendMessageRef = useRef<((message: string) => boolean) | null>(null)
   const [roomSession, setRoomSession] = useState<RoomSession | null>(null)
   const { user } = useAuth()
+
+  // Start AudioSession when component mounts
+  useEffect(() => {
+    let startAudioSession = async () => {
+      try {
+        await AudioSession.startAudioSession()
+        console.log('AudioSession started successfully')
+      } catch (error) {
+        console.error('Failed to start AudioSession:', error)
+      }
+    }
+
+    startAudioSession()
+    
+    return () => {
+      AudioSession.stopAudioSession()
+    }
+  }, [])
 
   // Tự động kết nối khi component mount và user có sẵn
   useEffect(() => {
@@ -242,9 +265,13 @@ console.log('Rendering LiveKitRoom with wsUrl:', wsUrl)
   return (
     <View style={styles.container}>
       <LiveKitRoom
-        token={token}
         serverUrl={wsUrl || ''}
+        token={token}
         connect={true}
+        options={{
+          // Use screen pixel density to handle screens with differing densities
+          adaptiveStream: { pixelDensity: 'screen' },
+        }}
         audio={true}
         video={false}
         onConnected={() => onConnectionChange?.(true)}
