@@ -7,6 +7,10 @@ import { LoginScreen } from './src/screens/LoginScreen';
 import  AIChat  from './src/screens/AIChat';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 
+
+// Đăng ký WebRTC globals
+
+
 const Stack = createNativeStackNavigator();
 
 function LoadingScreen() {

@@ -26,12 +26,12 @@ import Animated, {
   withRepeat,
   withSequence
 } from 'react-native-reanimated';
+import { useAudioStore } from '../../stores/audioStore';
 
 // Local imports
 import WidgetRenderer from '../components/ai/WidgetRenderer';
 import EkycCameraWidget from '../components/ai/widgets/EkycCameraWidget';
 import LiveKitVoiceRoom from '../components/ai/LiveKitVoiceRoom';
-
 
 const { width, height } = Dimensions.get('window');
 
@@ -54,6 +54,10 @@ export default function AIChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [isVoiceConnected, setIsVoiceConnected] = useState(false);
   const [showEkycPopup, setShowEkycPopup] = useState(false);
+  
+  // State cho refresh
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   const messagesEndRef = useRef<ScrollView>(null);
   const messagesRef = useRef(messages);
@@ -81,57 +85,260 @@ export default function AIChat() {
   // Animation values
   const micButtonScale = useSharedValue(1);
   const loadingOpacity = useSharedValue(0);
+  const refreshButtonRotation = useSharedValue(0);
+
+  // Refresh function
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    
+    // Animate refresh button
+    refreshButtonRotation.value = withRepeat(
+      withSpring(360, { duration: 1000 }),
+      1,
+      false
+    );
+    
+    try {
+      // Reset all states
+      setMessages([]);
+      setVoiceState('idle');
+      setInputMessage('');
+      setIsLoading(false);
+      setIsVoiceConnected(false);
+      setCurrentAgentMessage('');
+      setCurrentUserMessage('');
+      setStreamingMessageId(null);
+      
+      // Clear refs
+      processingContentRef.current = null;
+      if (finalizeMessageTimerRef.current) {
+        clearTimeout(finalizeMessageTimerRef.current);
+      }
+      if (proactiveTimer.current) {
+        clearTimeout(proactiveTimer.current);
+      }
+      
+      // Reset processed transcript tracking
+      setProcessedTranscriptIds(new Set());
+      setProcessedTranscriptContent(new Map());
+      
+      // Force remount LiveKitVoiceRoom component
+      setRefreshKey(prev => prev + 1);
+      
+      console.log('🔄 AIChat refreshed, LiveKit component will remount');
+      
+      // Simulate loading time
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+    } catch (error) {
+      console.error('Error during refresh:', error);
+    } finally {
+      setIsRefreshing(false);
+      refreshButtonRotation.value = 0;
+    }
+  };
 
   // Effect to keep messagesRef updated
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
 
-  // Event listeners setup
-  useEffect(() => {
-    const handleShowInvoiceList = (event: any) => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `invoice-list-${Date.now()}`,
-          type: 'widget',
-          sender: 'ai',
-          widgetType: 'invoiceList',
-          flowId: `invoice-list-flow-${Date.now()}`,
-          state: {
-            invoices: event.detail.invoices,
-            paid: event.detail.paid,
-            pending: event.detail.pending,
-            overdue: event.detail.overdue,
-            action: event.detail.action
-          },
-          timestamp: new Date()
-        }
-      ]);
-    };
-
-    // Add all other event listeners (same logic as web version)
-    const eventHandlers = [
-      { event: 'livekit-show-invoice-list', handler: handleShowInvoiceList },
-      // Add all other events here...
-    ];
-
-    eventHandlers.forEach(({ event, handler }) => {
-      if (typeof window !== 'undefined') {
-        window.addEventListener(event, handler);
+  // Custom event handler functions (replace window.addEventListener)
+  const handleShowInvoiceList = (data: any) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `invoice-list-${Date.now()}`,
+        type: 'widget',
+        sender: 'ai',
+        widgetType: 'invoiceList',
+        flowId: `invoice-list-flow-${Date.now()}`,
+        state: {
+          invoices: data.invoices,
+          paid: data.paid,
+          pending: data.pending,
+          overdue: data.overdue,
+          action: data.action
+        },
+        timestamp: new Date()
       }
-    });
+    ]);
+  };
 
-    return () => {
-      eventHandlers.forEach(({ event, handler }) => {
-        if (typeof window !== 'undefined') {
-          window.removeEventListener(event, handler);
+  const handleShowTransactionHistory = (data: any) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `transaction-history-${Date.now()}`,
+        type: 'widget',
+        sender: 'ai',
+        widgetType: 'transactionHistory',
+        flowId: `transaction-history-flow-${Date.now()}`,
+        state: {
+          transactions: data.transactions || [],
+          account: data.account
+        },
+        timestamp: new Date()
+      }
+    ]);
+  };
+
+  const handleShowAccount = (data: any) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `account-detail-${Date.now()}`,
+        type: 'widget',
+        sender: 'ai',
+        widgetType: 'accountDetail',
+        flowId: `account-detail-flow-${Date.now()}`,
+        state: {
+          account: data.account,
+          transactions: data.transactions || []
+        },
+        timestamp: new Date()
+      }
+    ]);
+  };
+
+  const handleShowAllAccount = (data: any) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `account-list-${Date.now()}`,
+        type: 'widget',
+        sender: 'ai',
+        widgetType: 'accountList',
+        flowId: `account-list-flow-${Date.now()}`,
+        state: {
+          accounts: data.accounts || []
+        },
+        timestamp: new Date()
+      }
+    ]);
+  };
+
+  const handleShowUserInfo = (data: any) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `user-info-${Date.now()}`,
+        type: 'widget',
+        sender: 'ai',
+        widgetType: 'userInfo',
+        flowId: `user-info-flow-${Date.now()}`,
+        state: {
+          user: data.user
+        },
+        timestamp: new Date()
+      }
+    ]);
+  };
+
+  const handleShowBalance = (data: any) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `balance-${Date.now()}`,
+        type: 'widget',
+        sender: 'ai',
+        widgetType: 'balance',
+        flowId: `balance-flow-${Date.now()}`,
+        state: {
+          balance: data.balance,
+          account: data.account
+        },
+        timestamp: new Date()
+      }
+    ]);
+  };
+
+  const handleInitTransaction = (data: any) => {
+    console.log('📤 handleInitTransaction called with data:', data);
+    
+    const transactionId = data.transaction_id || `tx-${Date.now()}`;
+    
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `transfer-${transactionId}`,
+        type: 'widget',
+        sender: 'ai',
+        widgetType: 'transfer',
+        flowId: `transfer-flow-${transactionId}`,
+        state: {
+          step: 'confirm',
+          recipient: data.receiver || data.receiverName,
+          amount: data.amount,
+          description: data.description || '',
+          transactionId: transactionId,
+          accountNumber: data.receiver_account_number || data.receiverAccountNumber,
+          bankName: data.bank_name || data.bankName || 'PVcomBank',
+          senderAccountNumber: data.sender_account_number || data.senderAccountNumber,
+          senderName: data.sender_name || data.senderName,
+          sourceAccountType: data.source_account_type || data.sourceAccountType,
+          isMetadataTransaction: true
+        },
+        timestamp: new Date()
+      }
+    ]);
+  };
+
+  const handleDoneTransaction = (data: any) => {
+    console.log('✅ handleDoneTransaction called with data:', data);
+    
+    const transactionId = data.transaction_id;
+    if (!transactionId) {
+      console.error('doneTransaction missing transaction_id');
+      return;
+    }
+
+    setMessages((prev) => {
+      const updatedMessages = prev.map((msg) => {
+        if (
+          msg.type === 'widget' &&
+          msg.widgetType === 'transfer' &&
+          msg.state?.transactionId === transactionId
+        ) {
+          console.log(`Found and updating transfer widget for transaction: ${transactionId}`);
+          return {
+            ...msg,
+            state: {
+              ...msg.state,
+              step: 'completed',
+              completedAt: new Date().toISOString()
+            }
+          };
         }
+        return msg;
       });
-    };
-  }, []);
+      return updatedMessages;
+    });
+  };
 
-  // Handle transcript message - EXACT SAME LOGIC
+  // Custom event system for React Native (replace window events)
+  const customEventHandlers = useRef({
+    'livekit-show-invoice-list': handleShowInvoiceList,
+    'livekit-transaction-history': handleShowTransactionHistory,
+    'livekit-show-account': handleShowAccount,
+    'livekit-show-all-account': handleShowAllAccount,
+    'livekit-show-user-info': handleShowUserInfo,
+    'livekit-show-balance': handleShowBalance,
+    'livekit-rpc-transaction': handleInitTransaction,
+    'livekit-done-transaction': handleDoneTransaction,
+  });
+
+  // Expose event trigger function to LiveKitVoiceRoom
+  const triggerCustomEvent = (eventName: string, data: any) => {
+    const handler = customEventHandlers.current[eventName];
+    if (handler) {
+      handler(data);
+    } else {
+      console.warn(`No handler found for event: ${eventName}`);
+    }
+  };
+
+  // Handle transcript message
   const handleTranscriptMessage = (transcriptMessage: any) => {
     const { content, isFinal, sender } = transcriptMessage;
 
@@ -273,7 +480,6 @@ export default function AIChat() {
       setStreamingMessageId(null);
     }
 
-    // Animate loading indicator
     if (voiceState === 'thinking') {
       loadingOpacity.value = withSpring(1);
     } else {
@@ -505,18 +711,6 @@ export default function AIChat() {
       withSpring(0.8),
       withSpring(1)
     );
-
-    if (sendVoiceChatMessageRef.current) {
-      try {
-        // Dispatch custom event for React Native
-        // You'll need to implement a custom event system
-        if (typeof sendVoiceChatMessageRef.current.toggleMic === 'function') {
-          sendVoiceChatMessageRef.current.toggleMic(newMicState);
-        }
-      } catch (error) {
-        console.error('Error toggling microphone:', error);
-      }
-    }
   };
 
   // Animated styles
@@ -529,6 +723,12 @@ export default function AIChat() {
   const loadingAnimatedStyle = useAnimatedStyle(() => {
     return {
       opacity: loadingOpacity.value
+    };
+  });
+
+  const refreshButtonAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ rotate: `${refreshButtonRotation.value}deg` }]
     };
   });
 
@@ -652,26 +852,49 @@ export default function AIChat() {
           </View>
         </View>
 
-        <Animated.View style={micButtonAnimatedStyle}>
-          <TouchableOpacity
-            style={[
-              styles.micButton,
-              { backgroundColor: !isMuted ? '#10b981' : '#6b7280' }
-            ]}
-            onPress={handleToggleMic}
-          >
-            <Icon 
-              name={!isMuted ? "mic" : "mic-off"} 
-              size={20} 
-              color="#ffffff" 
-            />
-          </TouchableOpacity>
-        </Animated.View>
+        <View style={styles.headerActions}>
+          {/* Refresh Button */}
+          <Animated.View style={refreshButtonAnimatedStyle}>
+            <TouchableOpacity
+              style={[
+                styles.refreshButton,
+                isRefreshing && styles.refreshButtonDisabled
+              ]}
+              onPress={handleRefresh}
+              disabled={isRefreshing}
+            >
+              <Icon 
+                name="refresh" 
+                size={20} 
+                color={isRefreshing ? "#9ca3af" : "#6b7280"} 
+              />
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* Mic Button */}
+          <Animated.View style={micButtonAnimatedStyle}>
+            <TouchableOpacity
+              style={[
+                styles.micButton,
+                { backgroundColor: !isMuted ? '#10b981' : '#6b7280' }
+              ]}
+              onPress={handleToggleMic}
+              disabled={isRefreshing}
+            >
+              <Icon 
+                name={!isMuted ? "mic" : "mic-off"} 
+                size={20} 
+                color="#ffffff" 
+              />
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
       </View>
 
-      {/* Voice Room - Hidden */}
+      {/* Voice Room - Hidden - Sử dụng refreshKey để force remount */}
       <View style={styles.hiddenContainer}>
         <LiveKitVoiceRoom
+          key={refreshKey} // Force remount when refreshKey changes
           onConnectionChange={setIsVoiceConnected}
           onMessageReceived={handleVoiceAssistantMessage}
           sendMessageRef={sendVoiceChatMessageRef}
@@ -679,6 +902,7 @@ export default function AIChat() {
           addMessage={addMessage}
           onTranscriptReceived={handleTranscriptMessage}
           onVoiceStateChange={setVoiceState}
+          onCustomEvent={triggerCustomEvent}
         />
       </View>
 
@@ -694,6 +918,36 @@ export default function AIChat() {
           contentContainerStyle={styles.messagesContent}
           showsVerticalScrollIndicator={false}
         >
+          {/* Refresh Indicator */}
+          {isRefreshing && (
+            <View style={styles.refreshIndicator}>
+              <ActivityIndicator size="small" color="#3b82f6" />
+              <Text style={styles.refreshText}>Đang làm mới kết nối...</Text>
+            </View>
+          )}
+
+          {/* Welcome Message when no messages */}
+          {messages.length === 0 && !isRefreshing && (
+            <View style={styles.welcomeContainer}>
+              <View style={styles.welcomeContent}>
+                <Icon name="smart-toy" size={48} color="#3b82f6" />
+                <Text style={styles.welcomeTitle}>Xin chào! 👋</Text>
+                <Text style={styles.welcomeText}>
+                  Tôi là Pivi, trợ lý tài chính thông minh của bạn. Hãy hỏi tôi bất cứ điều gì!
+                </Text>
+                <View style={styles.connectionStatus}>
+                  <View style={[
+                    styles.connectionDot,
+                    { backgroundColor: isVoiceConnected ? '#10b981' : '#ef4444' }
+                  ]} />
+                  <Text style={styles.connectionText}>
+                    {isVoiceConnected ? 'Đã kết nối voice chat' : 'Đang kết nối...'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+
           {messages.map((message, index) => renderMessage(message, index))}
 
           {/* Agent streaming message */}
@@ -751,6 +1005,7 @@ export default function AIChat() {
               placeholderTextColor="#9ca3af"
               editable={
                 !isLoading &&
+                !isRefreshing &&
                 voiceState !== 'thinking' &&
                 voiceState !== 'speaking'
               }
@@ -761,7 +1016,8 @@ export default function AIChat() {
               style={[
                 styles.sendButton,
                 (!inputMessage.trim() || 
-                 isLoading || 
+                 isLoading ||
+                 isRefreshing ||
                  voiceState === 'thinking' || 
                  voiceState === 'speaking') && styles.sendButtonDisabled
               ]}
@@ -769,6 +1025,7 @@ export default function AIChat() {
               disabled={
                 !inputMessage.trim() ||
                 isLoading ||
+                isRefreshing ||
                 voiceState === 'thinking' ||
                 voiceState === 'speaking'
               }
@@ -780,6 +1037,12 @@ export default function AIChat() {
           {(voiceState === 'thinking' || voiceState === 'speaking') && (
             <Text style={styles.inputWarning}>
               Bạn cần đợi AI xử lý và trả lời mới có thể gửi tin nhắn.
+            </Text>
+          )}
+          
+          {isRefreshing && (
+            <Text style={styles.inputWarning}>
+              Đang làm mới kết nối, vui lòng đợi...
             </Text>
           )}
         </View>
@@ -858,6 +1121,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  refreshButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f3f4f6',
+  },
+  refreshButtonDisabled: {
+    backgroundColor: '#e5e7eb',
+  },
   micButton: {
     width: 44,
     height: 44,
@@ -879,6 +1158,68 @@ const styles = StyleSheet.create({
   messagesContent: {
     padding: 16,
     paddingBottom: 8,
+  },
+  refreshIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    marginBottom: 16,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.2)',
+  },
+  refreshText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#3b82f6',
+    fontWeight: '500',
+  },
+  welcomeContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  welcomeContent: {
+    alignItems: 'center',
+    maxWidth: 280,
+  },
+  welcomeTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#111827',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  welcomeText: {
+    fontSize: 16,
+    color: '#6b7280',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 20,
+  },
+  connectionStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  connectionDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  connectionText: {
+    fontSize: 12,
+    color: '#6b7280',
+    fontWeight: '500',
   },
   messageContainer: {
     flexDirection: 'row',
