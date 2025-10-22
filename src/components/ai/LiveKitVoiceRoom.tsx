@@ -66,6 +66,7 @@ interface VoiceAssistantWidgetProps {
   addMessage?: (message: any) => void
   onTranscriptReceived?: (transcript: any) => void
   onVoiceStateChange?: (state: string) => void
+  onCustomEvent?: (eventName: string, data: any) => void
 }
 
 interface AgentTranscriptionTileProps {
@@ -215,7 +216,7 @@ export default function LiveKitVoiceRoom({
       setIsConnecting(false)
     }
   }
-console.log('Render LiveKitVoiceRoom with token:', token)
+
   const handleDisconnect = () => {
     setToken(null)
     setWsUrl(null)
@@ -261,7 +262,7 @@ console.log('Render LiveKitVoiceRoom with token:', token)
       </View>
     )
   }
-console.log('Rendering LiveKitRoom with wsUrl:', wsUrl)
+
   return (
     <View style={styles.container}>
       <LiveKitRoom
@@ -287,6 +288,7 @@ console.log('Rendering LiveKitRoom with wsUrl:', wsUrl)
           addMessage={addMessage}
           onTranscriptReceived={onTranscriptReceived}
           onVoiceStateChange={onVoiceStateChange}
+          onCustomEvent={onCustomEvent}
         />
       </LiveKitRoom>
     </View>
@@ -301,7 +303,8 @@ function VoiceAssistantWidget({
   roomSession,
   addMessage,
   onTranscriptReceived,
-  onVoiceStateChange
+  onVoiceStateChange,
+  onCustomEvent
 }: VoiceAssistantWidgetProps) {
   const { state, audioTrack } = useVoiceAssistant()
   const [showOtpWidget, setShowOtpWidget] = useState(false)
@@ -551,7 +554,32 @@ function VoiceAssistantWidget({
                       createdAt: new Date()
                     })
 
-                    console.log('🚀 DISPATCHING livekit-rpc-transaction')
+                    console.log('🚀 DISPATCHING livekit-rpc-transaction with data:', {
+                      receiver,
+                      amount,
+                      description,
+                      transaction_id,
+                      receiver_account_number,
+                      bank_name,
+                      source_account_type,
+                      sender_account_number,
+                      sender_name
+                    });
+
+                    // Trigger custom event cho AIChat
+                    if (onCustomEvent) {
+                      onCustomEvent('livekit-rpc-transaction', {
+                        receiver,
+                        amount,
+                        description,
+                        transaction_id,
+                        receiver_account_number,
+                        bank_name,
+                        source_account_type,
+                        sender_account_number,
+                        sender_name
+                      });
+                    }
                   }
                   break
 

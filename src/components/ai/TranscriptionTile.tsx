@@ -48,9 +48,7 @@ export function TranscriptionTile({
 
   // EFFECT: Xử lý agent và user transcript  
   useEffect(() => {
-    console.log('=== TRANSCRIPT PROCESSING DEBUG ===');
-    console.log('agentAudioTrack:', agentAudioTrack);
-    // console.log('agentMessages.segments:', agentMessages.segments);
+
     
     // XỬ LÝ: Agent transcript  
     if (agentAudioTrack && onAgentTranscript && agentMessages.segments) {
@@ -58,10 +56,10 @@ export function TranscriptionTile({
         const existingTranscript = transcripts.get(segment.id);
         
         if (!existingTranscript || existingTranscript.message !== segment.text) {
-          console.log('📤 Sending AGENT transcript for streaming:', {
-            content: segment.text,
-            isFinal: segment.final
-          });
+          // console.log('📤 Sending AGENT transcript for streaming:', {
+          //   content: segment.text,
+          //   isFinal: segment.final
+          // });
           
           onAgentTranscript({
             content: segment.text,
@@ -86,23 +84,12 @@ export function TranscriptionTile({
       console.log('Processing user segments, count:', localMessages.segments.length);
       
       localMessages.segments.forEach((segment, index) => {
-        console.log(`👤 User Segment ${index}:`, {
-          id: segment.id,
-          text: segment.text?.substring(0, 50) + '...',
-          final: segment.final,
-          typeof_final: typeof segment.final
-        });
+ 
         
         const existingTranscript = userTranscripts.get(segment.id);
         
         if (!existingTranscript || existingTranscript.message !== segment.text) {
      
-          
-          console.log('📤 Sending USER transcript:', {
-            content: segment.text,
-            isFinal: segment.final,
-            original_final: segment.final
-          });
           
           onUserTranscript({
             content: segment.text,
@@ -132,8 +119,8 @@ export function TranscriptionTile({
 
   // store transcripts
   useEffect(() => {
-    console.log('agentAudioTrack:', agentAudioTrack)
-    console.log('agentMessages.segments:', agentMessages.segments)
+    // console.log('agentAudioTrack:', agentAudioTrack)
+    // console.log('agentMessages.segments:', agentMessages.segments)
     if (agentAudioTrack) {
       agentMessages.segments.forEach((s) => {
         const msg = segmentToChatMessage(
@@ -142,7 +129,7 @@ export function TranscriptionTile({
           agentAudioTrack.participant,
         );
         transcripts.set(s.id, msg);
-        console.log('Agent transcript:', msg);
+        // console.log('Agent transcript:', msg);
       });
     }
 

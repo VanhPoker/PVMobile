@@ -260,8 +260,42 @@ export default function AIChat() {
 
   const handleInitTransaction = (data: any) => {
     console.log('📤 handleInitTransaction called with data:', data);
+    console.log('📤 Data type:', typeof data);
+    console.log('📤 Data keys:', data ? Object.keys(data) : 'null');
     
-    const transactionId = data.transaction_id || `tx-${Date.now()}`;
+    // Parse data nếu là string JSON
+    let transactionData = data;
+    if (typeof data === 'string') {
+      try {
+        transactionData = JSON.parse(data);
+      } catch (e) {
+        console.error('Failed to parse transaction data:', e);
+        transactionData = data;
+      }
+    }
+    
+    const transactionId = transactionData.transaction_id || `tx-${Date.now()}`;
+    
+    // Chuẩn bị state cho TransferWidget
+    const transferState = {
+      step: 'confirm', // Luôn hiển thị confirmation step
+      recipient: {
+        name: transactionData.receiver || transactionData.receiverName || transactionData.recipient_name || 'Người nhận',
+        accountNumber: transactionData.receiver_account_number || transactionData.receiverAccountNumber || transactionData.account_number || ''
+      },
+      sender: {
+        name: transactionData.sender_name || transactionData.senderName || 'Tài khoản của bạn',
+        accountNumber: transactionData.sender_account_number || transactionData.senderAccountNumber || '1234567890',
+        accountType: transactionData.source_account_type || transactionData.sourceAccountType || 'Tài khoản thanh toán'
+      },
+      amount: Number(transactionData.amount) || 0,
+      description: transactionData.description || transactionData.content || transactionData.memo || '',
+      transactionId: transactionId,
+      bankName: transactionData.bank_name || transactionData.bankName || 'pvcombank',
+      isMetadataTransaction: true
+    };
+    
+    console.log('🎯 Creating transfer widget with state:', transferState);
     
     setMessages((prev) => [
       ...prev,
@@ -271,19 +305,7 @@ export default function AIChat() {
         sender: 'ai',
         widgetType: 'transfer',
         flowId: `transfer-flow-${transactionId}`,
-        state: {
-          step: 'confirm',
-          recipient: data.receiver || data.receiverName,
-          amount: data.amount,
-          description: data.description || '',
-          transactionId: transactionId,
-          accountNumber: data.receiver_account_number || data.receiverAccountNumber,
-          bankName: data.bank_name || data.bankName || 'PVcomBank',
-          senderAccountNumber: data.sender_account_number || data.senderAccountNumber,
-          senderName: data.sender_name || data.senderName,
-          sourceAccountType: data.source_account_type || data.sourceAccountType,
-          isMetadataTransaction: true
-        },
+        state: transferState,
         timestamp: new Date()
       }
     ]);
@@ -322,7 +344,7 @@ export default function AIChat() {
   };
 
   // Custom event system for React Native (replace window events)
-  const customEventHandlers = useRef({
+  const customEventHandlers = useRef<Record<string, (data: any) => void>>({
     'livekit-show-invoice-list': handleShowInvoiceList,
     'livekit-transaction-history': handleShowTransactionHistory,
     'livekit-show-account': handleShowAccount,
@@ -335,11 +357,14 @@ export default function AIChat() {
 
   // Expose event trigger function to LiveKitVoiceRoom
   const triggerCustomEvent = (eventName: string, data: any) => {
+    console.log('🎯 triggerCustomEvent called:', { eventName, data });
     const handler = customEventHandlers.current[eventName];
     if (handler) {
+      console.log('✅ Handler found, calling:', eventName);
       handler(data);
     } else {
-      console.warn(`No handler found for event: ${eventName}`);
+      console.warn(`❌ No handler found for event: ${eventName}`);
+      console.log('📋 Available handlers:', Object.keys(customEventHandlers.current));
     }
   };
 
@@ -837,8 +862,8 @@ export default function AIChat() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
       
-      {/* Header */}
-      <View style={styles.header}>
+      {/* Header với margin top để tránh status bar */}
+      <View style={[styles.header, { marginTop: insets.top }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
@@ -969,9 +994,9 @@ export default function AIChat() {
               </View>
               <View style={[styles.messageBubble, styles.aiBubble]}>
                 <View style={styles.loadingContainer}>
-                  <View style={[styles.loadingDot, { animationDelay: 0 }]} />
-                  <View style={[styles.loadingDot, { animationDelay: 200 }]} />
-                  <View style={[styles.loadingDot, { animationDelay: 400 }]} />
+                  <Animated.View style={[styles.loadingDot]} />
+                  <Animated.View style={[styles.loadingDot]} />
+                  <Animated.View style={[styles.loadingDot]} />
                 </View>
               </View>
             </Animated.View>
@@ -986,9 +1011,9 @@ export default function AIChat() {
                 </View>
                 <View style={[styles.messageBubble, styles.aiBubble]}>
                   <View style={styles.loadingContainer}>
-                    <View style={[styles.loadingDot, { animationDelay: 0 }]} />
-                    <View style={[styles.loadingDot, { animationDelay: 200 }]} />
-                    <View style={[styles.loadingDot, { animationDelay: 400 }]} />
+                    <Animated.View style={[styles.loadingDot]} />
+                    <Animated.View style={[styles.loadingDot]} />
+                    <Animated.View style={[styles.loadingDot]} />
                   </View>
                 </View>
               </View>
@@ -1092,6 +1117,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',
+    paddingTop: 0, // Loại bỏ padding top mặc định
   },
   header: {
     flexDirection: 'row',
