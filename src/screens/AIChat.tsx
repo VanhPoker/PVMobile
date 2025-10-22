@@ -17,6 +17,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../types/navigation';
+
 import Animated, { 
   FadeInUp, 
   FadeIn, 
@@ -47,6 +50,8 @@ interface Message {
   hidden?: boolean;
 }
 
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
 export default function AIChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [voiceState, setVoiceState] = useState('idle');
@@ -62,7 +67,7 @@ export default function AIChat() {
   const messagesEndRef = useRef<ScrollView>(null);
   const messagesRef = useRef(messages);
   const actionManagerRef = useRef<any>(null);
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
   const proactiveTimer = useRef<NodeJS.Timeout | null>(null);
   const sendVoiceChatMessageRef = useRef<any>(null);
   const lastTranscriptRef = useRef({ text: '', timestamp: 0 });
@@ -1076,6 +1081,9 @@ export default function AIChat() {
           </View>
         </View>
       </Modal>
+              
+      {/* Test Button - Navigate to Test Screen */}
+  
     </SafeAreaView>
   );
 }
@@ -1366,5 +1374,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#f3f4f6',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  testButton: {
+    position: 'absolute',
+    bottom: 80,
+    right: 16,
+    backgroundColor: '#3b82f6',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    zIndex: 1000,
+  },
+  testButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '500',
   },
 });

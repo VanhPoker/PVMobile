@@ -5,13 +5,13 @@ import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from './src/hooks/useAuth';
 import { LoginScreen } from './src/screens/LoginScreen';
 import  AIChat  from './src/screens/AIChat';
+import TestScreen from './src/screens/TestScreen';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import type { RootStackParamList } from './src/types/navigation';
+import { registerGlobals } from '@livekit/react-native';
 
-
-// Đăng ký WebRTC globals
-
-
-const Stack = createNativeStackNavigator();
+registerGlobals();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function LoadingScreen() {
   return (
@@ -32,7 +32,10 @@ function AppNavigator() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
-          <Stack.Screen name="Chat" component={AIChat} />
+          <>
+            <Stack.Screen name="Chat" component={AIChat} />
+       
+          </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} />
         )}
