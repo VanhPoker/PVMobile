@@ -311,6 +311,16 @@ function VoiceAssistantWidget({
   const [otpResolve, setOtpResolve] = useState<((value: string) => void) | null>(null)
   const [showEkycWidget, setShowEkycWidget] = useState(false)
   const [ekycResolve, setEkycResolve] = useState<((value: string) => void) | null>(null)
+
+  // Debug widget states
+  useEffect(() => {
+    console.log('🔍 Widget States changed:', {
+      showOtpWidget,
+      showEkycWidget,
+      hasOtpResolve: !!otpResolve,
+      hasEkycResolve: !!ekycResolve
+    })
+  }, [showOtpWidget, showEkycWidget, otpResolve, ekycResolve])
   
   const { isMuted, isDeafened, setMicState, setDeafenedState, setBotExists } = useAudioStore()
 
@@ -369,48 +379,92 @@ function VoiceAssistantWidget({
   // RPC Methods setup
   useEffect(() => {
     if (localParticipant) {
+      console.log('🔧 Registering RPC method getEkycCode...')
+      
       localParticipant.registerRpcMethod('getEkycCode', async (data: RpcInvocationData): Promise<string> => {
+        console.log('📋 RPC getEkycCode called!')
+        console.log('📋 Raw data:', data)
+        
         let params = null
         try {
           params = JSON.parse(data.payload)
-          console.log('params rpc :', params)
+          console.log('📋 Parsed params:', params)
           
           if (params.mode === 'otp') {
+            console.log('🔢 Opening OTP widget...')
             return await new Promise<string>((resolve) => {
               setOtpResolve(() => resolve)
               setShowOtpWidget(true)
             })
           } else if (params.mode === 'ekyc') {
+            console.log('🆔 Opening EKYC widget...')
+            console.log('🆔 Setting showEkycWidget to true')
+            setShowEkycWidget(true)
+            
             return await new Promise<string>((resolve) => {
+              console.log('🆔 Setting EKYC resolve function')
               setEkycResolve(() => resolve)
-              setShowEkycWidget(true)
             })
           } else {
+            console.log('🔧 Unknown mode:', params.mode)
             return JSON.stringify({
               ekycCode: 'EKYC-123456',
-              mode: params.mode
+              mode: params.mode,
+              timestamp: new Date().toISOString()
             })
           }
         } catch (error) {
-          console.error('Lỗi khi xử lý yêu cầu getEkycCode:', error)
-          return JSON.stringify({ error: 'Failed to process request' })
+          console.error('❌ Lỗi khi xử lý yêu cầu getEkycCode:', error)
+          return JSON.stringify({ 
+            error: 'Failed to process request',
+            details: error.message 
+          })
         }
       })
+      
+      console.log('✅ RPC method getEkycCode registered successfully')
+    } else {
+      console.log('⚠️ LocalParticipant not available for RPC registration')
     }
   }, [localParticipant])
 
   const handleOtpSubmit = (otp: string) => {
+    console.log('🔢 OTP submitted:', otp)
     setShowOtpWidget(false)
     if (otpResolve) {
-      otpResolve(JSON.stringify({ otp }))
+      const response = JSON.stringify({ otp })
+      console.log('📤 Sending OTP response:', response)
+      otpResolve(response)
       setOtpResolve(null)
     }
   }
 
-  const handleEkycDone = () => {
+  const handleEkycDone = (data?: any) => {
+    console.log('✅ EKYC completed with data:', data)
     setShowEkycWidget(false)
     if (ekycResolve) {
-      ekycResolve(JSON.stringify({ ekycResult: 'ekyc thành công' }))
+      const response = JSON.stringify({ 
+        ekycResult: 'ekyc thành công',
+        data: data || {},
+        timestamp: new Date().toISOString()
+      })
+      console.log('📤 Sending EKYC response:', response)
+      ekycResolve(response)
+      setEkycResolve(null)
+    }
+  }
+
+  const handleEkycCancel = () => {
+    console.log('❌ EKYC cancelled')
+    setShowEkycWidget(false)
+    if (ekycResolve) {
+      const response = JSON.stringify({ 
+        ekycResult: 'ekyc bị hủy',
+        cancelled: true,
+        timestamp: new Date().toISOString()
+      })
+      console.log('📤 Sending EKYC cancellation response:', response)
+      ekycResolve(response)
       setEkycResolve(null)
     }
   }
@@ -609,6 +663,76 @@ function VoiceAssistantWidget({
                   }
                   break
 
+                case 'showAccountDetail':
+                  if (metadata.data && onCustomEvent) {
+                    console.log('🏧 DISPATCHING livekit-show-account-detail');
+                    onCustomEvent('livekit-show-account-detail', metadata.data);
+                  }
+                  break
+
+                case 'showInvoiceDetail':
+                  if (metadata.data && onCustomEvent) {
+                    console.log('🧾 DISPATCHING livekit-show-invoice-detail');
+                    onCustomEvent('livekit-show-invoice-detail', metadata.data);
+                  }
+                  break
+
+                case 'destinationChoiceTransaction':
+                  if (metadata.data && onCustomEvent) {
+                    console.log('🎯 DISPATCHING livekit-destination-choice-transaction');
+                    onCustomEvent('livekit-destination-choice-transaction', metadata.data);
+                  }
+                  break
+
+                case 'showAccountChoices':
+                  if (metadata.data && onCustomEvent) {
+                    console.log('🏦 DISPATCHING livekit-show-account-choices');
+                    onCustomEvent('livekit-show-account-choices', metadata.data);
+                  }
+                  break
+
+                case 'showBlockedAccounts':
+                  if (metadata.data && onCustomEvent) {
+                    console.log('🚫 DISPATCHING livekit-show-blocked-accounts');
+                    onCustomEvent('livekit-show-blocked-accounts', metadata.data);
+                  }
+                  break
+
+                case 'showPaidInvoice':
+                  if (metadata.data && onCustomEvent) {
+                    console.log('✅ DISPATCHING livekit-show-paid-invoice');
+                    onCustomEvent('livekit-show-paid-invoice', metadata.data);
+                  }
+                  break
+
+                case 'showInvoiceComparison':
+                  if (metadata.data && onCustomEvent) {
+                    console.log('📊 DISPATCHING livekit-show-invoice-comparison');
+                    onCustomEvent('livekit-show-invoice-comparison', metadata.data);
+                  }
+                  break
+
+                case 'showAccountBlockStatus':
+                  if (metadata.data && onCustomEvent) {
+                    console.log('🔒 DISPATCHING livekit-show-account-block-status');
+                    onCustomEvent('livekit-show-account-block-status', metadata.data);
+                  }
+                  break
+
+                case 'showAllAccount':
+                  if (metadata.data && onCustomEvent) {
+                    console.log('🏦 DISPATCHING livekit-show-all-account');
+                    onCustomEvent('livekit-show-all-account', metadata.data);
+                  }
+                  break
+
+                case 'showInvoiceList':
+                  if (metadata.data && onCustomEvent) {
+                    console.log('📄 DISPATCHING livekit-show-invoice-list');
+                    onCustomEvent('livekit-show-invoice-list', metadata.data);
+                  }
+                  break
+
                 default:
                   console.log(`Received metadata: ${metadata.method_name}`, metadata.data)
                   break
@@ -800,7 +924,7 @@ function VoiceAssistantWidget({
       {showEkycWidget && (
         <EkycCameraWidget 
           onDone={handleEkycDone}
-          onCancel={() => setShowEkycWidget(false)}
+          onCancel={handleEkycCancel}
         />
       )}
 

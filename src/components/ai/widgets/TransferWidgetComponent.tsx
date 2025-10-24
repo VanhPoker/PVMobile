@@ -83,9 +83,19 @@ export default function TransferWidgetComponent({
       bankName
     }
 
-    // React Native doesn't have window.dispatchEvent
-    // Use callback or event emitter instead
-    
+    // ✅ Gửi message trực tiếp vào metadata-topic
+    if (onAction) {
+      onAction({
+        type: 'SEND_MESSAGE_TO_METADATA_TOPIC',
+        flowId,
+        payload: {
+          message: 'xác nhận chuyển khoản nếu đã đủ thông tin',
+          data: payloadData
+        }
+      })
+    }
+
+    // Trigger action cũ (nếu cần)
     if (onAction) {
       onAction({
         type: 'TRIGGER_ACTION',
@@ -98,7 +108,7 @@ export default function TransferWidgetComponent({
     }
 
     if (onSetInputMessage) {
-      onSetInputMessage(``)
+      onSetInputMessage(`xác nhận chuyển khoản nếu đã đủ thông tin`)
     }
   }
 

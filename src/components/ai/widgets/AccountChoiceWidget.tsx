@@ -22,8 +22,28 @@ export default function AccountChoiceWidget({ state = {}, onAction }: any) {
 
     // Delay để show animation
     setTimeout(() => {
-      // Gọi onAction nếu cần xử lý thêm ở AIChat
-      onAction && onAction({ type: 'ACCOUNT_SELECTED', payload: acc })
+      console.log('🎯 Account selected:', acc);
+      
+      // ✅ Gửi message trực tiếp vào metadata-topic
+      if (onAction) {
+        onAction({
+          type: 'SEND_MESSAGE_TO_METADATA_TOPIC',
+          flowId: 'destination-choice',
+          payload: {
+            message: `Tôi chọn tài khoản ${acc.receiver} - ${acc.receiver_account_number} tại ${acc.bank_name}`,
+            selectedAccount: acc
+          }
+        })
+      }
+
+      // Gọi onAction cho UI update nếu cần
+      onAction && onAction({ 
+        type: 'ACCOUNT_SELECTED', 
+        payload: {
+          ...acc,
+          message: `Tôi chọn tài khoản ${acc.receiver} - ${acc.receiver_account_number} tại ${acc.bank_name}`
+        }
+      })
     }, 300)
   }
 

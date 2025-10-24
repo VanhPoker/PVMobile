@@ -6,22 +6,50 @@ import {
   StyleSheet, 
   ScrollView 
 } from 'react-native'
-import PropTypes from 'prop-types'
 
-export default function AccountListWidget({ state = {}, onAction, flowId }) {
+// Define types
+interface Account {
+  account_number: string;
+  type: string;
+  amount: number;
+  currency?: string;
+  currency_type?: string;
+  status: string;
+  metadata?: any;
+}
+
+interface AccountListWidgetProps {
+  state?: {
+    accounts?: Account[];
+    action?: string;
+  };
+  onAction: (action: any) => void;
+  flowId: string;
+}
+
+interface ShowFullAccountState {
+  [key: string]: boolean;
+}
+
+export default function AccountListWidget({ 
+  state = {}, 
+  onAction, 
+  flowId 
+}: AccountListWidgetProps) {
   const { accounts = [], action = 'showAll' } = state
 
-  const [pendingAccounts, setPendingAccounts] = useState([])
-  const [showFullAccount, setShowFullAccount] = useState({})
+  const [pendingAccounts, setPendingAccounts] = useState<string[]>([])
+  const [showFullAccount, setShowFullAccount] = useState<ShowFullAccountState>({})
 
   console.log('🏦 AccountListWidget rendered:', {
     flowId,
     accountCount: accounts.length,
     action,
-    accounts
+    accounts,
+    state // Log toàn bộ state để debug
   })
 
-  const formatCurrency = (amount, currency = 'VND') => {
+  const formatCurrency = (amount: number, currency: string = 'VND'): string => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
       currency: currency,
@@ -29,14 +57,20 @@ export default function AccountListWidget({ state = {}, onAction, flowId }) {
     }).format(amount)
   }
 
-  const getAccountIcon = (type) => {
+  const getAccountIcon = (type: string): string => {
     switch (type?.toLowerCase()) {
+      case 'tài khoản thanh toán':
       case 'thanh toán':
       case 'payment':
         return '💳'
+      case 'tài khoản tiết kiệm':
       case 'tiết kiệm':
       case 'savings':
         return '🏦'
+      case 'tài khoản tín dụng':
+      case 'tín dụng':
+      case 'credit':
+        return '💰'
       case 'đầu tư':
       case 'investment':
         return '📈'
@@ -45,14 +79,20 @@ export default function AccountListWidget({ state = {}, onAction, flowId }) {
     }
   }
 
-  const getAccountStyle = (type) => {
+  const getAccountStyle = (type: string) => {
     switch (type?.toLowerCase()) {
+      case 'tài khoản thanh toán':
       case 'thanh toán':
       case 'payment':
         return styles.blueAccount
+      case 'tài khoản tiết kiệm':
       case 'tiết kiệm':
       case 'savings':
         return styles.greenAccount
+      case 'tài khoản tín dụng':
+      case 'tín dụng':
+      case 'credit':
+        return styles.purpleAccount
       case 'đầu tư':
       case 'investment':
         return styles.purpleAccount
@@ -61,60 +101,64 @@ export default function AccountListWidget({ state = {}, onAction, flowId }) {
     }
   }
 
-  const handleAccountAction = (account, actionType) => {
+  const handleAccountAction = (account: Account, actionType: string) => {
     console.log(`Account ${actionType} clicked:`, account)
 
     if (actionType === 'transfer') {
-      // Gửi sự kiện sang LiveKit - React Native không có window
-      // Có thể sử dụng EventEmitter hoặc props callback
-      onAction &&
-        onAction({
-          type: 'ACCOUNT_SELECTED',
-          flowId,
-          payload: {
-            ...account,
-            message: `Tôi muốn chuyển khoản bằng tài khoản ${account.account_number} , type: ${account.type}`
-          }
-        })
-    }
-
-    onAction &&
       onAction({
-        type: 'TRIGGER_ACTION',
-        flowId,
-        payload: {
-          actionName: `account${actionType.charAt(0).toUpperCase() + actionType.slice(1)}`,
-          data: {
-            account: account,
-            actionType: actionType
-          }
-        }
-      })
-  }
-
-  const handleLockUnlock = (account, isLock) => {
-    setPendingAccounts((prev) => [...prev, account.account_number])
-    
-    onAction &&
-      onAction({
-        type: 'ACCOUNT_LOCK_UNLOCK',
+        type: 'ACCOUNT_SELECTED',
         flowId,
         payload: {
           ...account,
-          message: `${isLock ? 'khoa' : 'mở'} tai khoan ${account.account_number}`,
-          isLock
+          message: `Tôi muốn chuyển khoản bằng tài khoản ${account.account_number} , type: ${account.type}`
         }
       })
+    }
+
+    onAction({
+      type: 'TRIGGER_ACTION',
+      flowId,
+      payload: {
+        actionName: `account${actionType.charAt(0).toUpperCase() + actionType.slice(1)}`,
+        data: {
+          account: account,
+          actionType: actionType
+        }
+      }
+    })
   }
 
-  const toggleShowAccount = (account_number) => {
+  const handleLockUnlock = (account: Account, isLock: boolean) => {
+    setPendingAccounts((prev) => [...prev, account.account_number])
+    
+    onAction({
+      type: 'ACCOUNT_LOCK_UNLOCK',
+      flowId,
+      payload: {
+        ...account,
+        message: `${isLock ? 'khoa' : 'mở'} tai khoan ${account.account_number}`,
+        isLock
+      }
+    })
+  }
+
+  const toggleShowAccount = (account_number: string) => {
     setShowFullAccount((prev) => ({
       ...prev,
       [account_number]: !prev[account_number]
     }))
   }
 
-  if (!accounts || accounts.length === 0) {
+  // Debug: Log exactly what we're checking
+  console.log('🏦 Checking accounts:', {
+    accounts,
+    isArray: Array.isArray(accounts),
+    length: accounts?.length,
+    firstAccount: accounts?.[0]
+  });
+
+  if (!accounts || !Array.isArray(accounts) || accounts.length === 0) {
+    console.log('🏦 No accounts found - showing empty state');
     return (
       <View style={styles.emptyCard}>
         <View style={styles.emptyContent}>
@@ -127,6 +171,8 @@ export default function AccountListWidget({ state = {}, onAction, flowId }) {
       </View>
     )
   }
+
+  console.log('🏦 Rendering accounts list with', accounts.length, 'accounts');
 
   return (
     <View style={styles.card}>
@@ -145,7 +191,7 @@ export default function AccountListWidget({ state = {}, onAction, flowId }) {
             )
             .map((account, index) => (
               <View
-                key={index}
+                key={`account-${account.account_number}-${index}`}
                 style={[styles.accountItem, getAccountStyle(account.type)]}
               >
                 <View style={styles.accountHeader}>
@@ -157,7 +203,7 @@ export default function AccountListWidget({ state = {}, onAction, flowId }) {
                   </View>
                   <View style={styles.currencyBadge}>
                     <Text style={styles.currencyText}>
-                      {account.currency_type || 'VND'}
+                      {account.currency_type || account.currency || 'VND'}
                     </Text>
                   </View>
                 </View>
@@ -181,7 +227,7 @@ export default function AccountListWidget({ state = {}, onAction, flowId }) {
 
                 <View style={styles.balanceContainer}>
                   <Text style={styles.balance}>
-                    {formatCurrency(account.amount, account.currency_type)}
+                    {formatCurrency(account.amount, account.currency_type || account.currency)}
                   </Text>
                 </View>
 
@@ -403,17 +449,3 @@ const styles = StyleSheet.create({
   },
 })
 
-AccountListWidget.propTypes = {
-  state: PropTypes.shape({
-    accounts: PropTypes.arrayOf(
-      PropTypes.shape({
-        type: PropTypes.string,
-        amount: PropTypes.number,
-        currency_type: PropTypes.string
-      })
-    ),
-    action: PropTypes.string
-  }),
-  onAction: PropTypes.func.isRequired,
-  flowId: PropTypes.string.isRequired
-}

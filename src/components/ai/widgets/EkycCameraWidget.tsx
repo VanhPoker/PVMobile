@@ -8,10 +8,11 @@ import {
   Image,
   Dimensions,
   Modal,
+  Platform,
 } from "react-native";
-import { Camera, CameraType } from "expo-camera";
-// Hoặc sử dụng react-native-vision-camera nếu bạn muốn
-// import { Camera, useCameraDevices } from 'react-native-vision-camera';
+
+// ✅ Sửa Camera import - dùng expo-camera hoặc react-native-vision-camera
+import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 
 const { width } = Dimensions.get("window");
 
@@ -24,25 +25,26 @@ export default function EkycCameraWidget({
   onDone,
   onCancel,
 }: EkycCameraWidgetProps) {
-  const cameraRef = useRef < Camera > null;
+  
+  console.log('🆔 EkycCameraWidget rendered:', { onDone: !!onDone, onCancel: !!onCancel })
+  
+  const cameraRef = useRef<any>(null);
   const [countdown, setCountdown] = useState(3);
   const [captured, setCaptured] = useState(false);
-  const [image, setImage] = (useState < string) | (null > null);
-  const [hasPermission, setHasPermission] =
-    (useState < boolean) | (null > null);
-  const [cameraType, setCameraType] = useState(CameraType.front);
+  const [image, setImage] = useState<string | null>(null);
+  const [permission, requestPermission] = useCameraPermissions();
+  const [facing, setFacing] = useState<CameraType>('front');
 
   // Request camera permission
   useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === "granted");
-    })();
-  }, []);
+    if (!permission?.granted) {
+      requestPermission();
+    }
+  }, [permission, requestPermission]);
 
   // Countdown and auto capture
   useEffect(() => {
-    if (captured || !hasPermission) return;
+    if (captured || !permission?.granted) return;
 
     if (countdown === 0) {
       takePicture();
@@ -51,7 +53,7 @@ export default function EkycCameraWidget({
 
     const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
     return () => clearTimeout(timer);
-  }, [countdown, captured, hasPermission]);
+  }, [countdown, captured, permission?.granted]);
 
   const takePicture = async () => {
     if (cameraRef.current) {
@@ -65,6 +67,8 @@ export default function EkycCameraWidget({
         const imageUri = `data:image/jpeg;base64,${photo.base64}`;
         setImage(imageUri);
         setCaptured(true);
+
+        console.log('📸 Photo captured successfully');
 
         setTimeout(() => {
           if (onDone) {
@@ -84,7 +88,11 @@ export default function EkycCameraWidget({
     setCountdown(3);
   };
 
-  if (hasPermission === null) {
+  const toggleCameraFacing = () => {
+    setFacing(current => (current === 'back' ? 'front' : 'back'));
+  };
+
+  if (!permission) {
     return (
       <View style={styles.container}>
         <Text style={styles.message}>
@@ -94,12 +102,15 @@ export default function EkycCameraWidget({
     );
   }
 
-  if (hasPermission === false) {
+  if (!permission.granted) {
     return (
       <View style={styles.container}>
         <Text style={styles.errorMessage}>
           Không có quyền truy cập camera. Vui lòng cấp quyền trong Settings.
         </Text>
+        <TouchableOpacity style={styles.button} onPress={requestPermission}>
+          <Text style={styles.buttonText}>Cấp quyền camera</Text>
+        </TouchableOpacity>
         {onCancel && (
           <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
             <Text style={styles.cancelButtonText}>Đóng</Text>
@@ -123,11 +134,10 @@ export default function EkycCameraWidget({
 
         <View style={styles.cameraContainer}>
           {!captured ? (
-            <Camera
+            <CameraView
               ref={cameraRef}
               style={styles.camera}
-              type={cameraType}
-              ratio="1:1"
+              facing={facing}
             >
               <View style={styles.overlay}>
                 <View style={styles.faceFrame} />
@@ -137,7 +147,7 @@ export default function EkycCameraWidget({
                   </View>
                 )}
               </View>
-            </Camera>
+            </CameraView>
           ) : (
             image && (
               <Image source={{ uri: image }} style={styles.capturedImage} />
@@ -181,13 +191,7 @@ export default function EkycCameraWidget({
 
             <TouchableOpacity
               style={styles.flipButton}
-              onPress={() =>
-                setCameraType(
-                  cameraType === CameraType.back
-                    ? CameraType.front
-                    : CameraType.back
-                )
-              }
+              onPress={toggleCameraFacing}
             >
               <Text style={styles.flipButtonText}>🔄</Text>
             </TouchableOpacity>
@@ -348,6 +352,19 @@ const styles = StyleSheet.create({
     color: "#dc2626",
     textAlign: "center",
     margin: 20,
+  },
+  button: {
+    backgroundColor: "#3b82f6",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignSelf: "center",
+    marginTop: 16,
+  },
+  buttonText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "500",
   },
   cancelButton: {
     backgroundColor: "#6b7280",

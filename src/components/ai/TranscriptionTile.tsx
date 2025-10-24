@@ -167,7 +167,7 @@ export function TranscriptionTile({
         timestamp: msg.timestamp,
         isSelf: isSelf,
       });
-      console.log('Pushed chat message:', { name, message: msg.message, isSelf });
+      // console.log('Pushed chat message:', { name, message: msg.message, isSelf });
     }
     allMessages.sort((a, b) => a.timestamp - b.timestamp);
     setMessages(allMessages);

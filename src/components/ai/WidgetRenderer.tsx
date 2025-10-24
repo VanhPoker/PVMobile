@@ -1,3 +1,5 @@
+import React from 'react';
+import { View, Text } from 'react-native';
 import TransferWidgetComponent from './widgets/TransferWidgetComponent'
 import AccountListWidget from './widgets/AccountListWidget'
 import UserInfoWidget from './widgets/UserInfoWidget'
@@ -12,16 +14,24 @@ import BlockedAccountsWidget from './widgets/BlockedAccountsWidget'
 import InvoiceComparisonWidget from './widgets/InvoiceComparisonWidget'
 import AccountBlockStatusWidget from './widgets/AccountBlockStatusWidget'
 import InvoiceListWidget from './widgets/InvoiceListWidget'
+import BalanceWidgetComponent from './widgets/BalanceWidgetComponent'
 
-// THÊM: nhận prop onSetInputMessage
+interface WidgetRendererProps {
+  widgetType: string;
+  state: any;
+  flowId: string;
+  onAction: (action: any) => void;
+  onSetInputMessage?: (message: string) => void;
+}
+
 export default function WidgetRenderer({
   widgetType,
   state,
   flowId,
   onAction,
   onSetInputMessage
-}) {
-  console.log('🔧 WidgetRenderer called:', { widgetType, state, flowId })
+}: WidgetRendererProps) {
+  // console.log('🔧 WidgetRenderer called:', { widgetType, state, flowId })
 
   const renderWidget = () => {
     switch (widgetType) {
@@ -78,7 +88,7 @@ export default function WidgetRenderer({
         return (
           <OtpInputWidget
             state={state}
-            onSubmit={(otp) =>
+            onSubmit={(otp: string) =>
               state.resolve && state.resolve(JSON.stringify({ otp }))
             }
           />
@@ -156,6 +166,26 @@ export default function WidgetRenderer({
             onSetInputMessage={onSetInputMessage}
           />
         )
+      
+      case 'balance':
+        return (
+          <BalanceWidgetComponent
+            state={state}
+            onAction={onAction}
+            flowId={flowId}
+            onSetInputMessage={onSetInputMessage}
+          />
+        )
+
+      default:
+        console.warn(`Unknown widget type: ${widgetType}`);
+        return (
+          <View style={{ padding: 16, backgroundColor: '#f3f4f6', borderRadius: 8 }}>
+            <Text style={{ fontSize: 14, color: '#6b7280' }}>
+              Widget không được hỗ trợ: {widgetType}
+            </Text>
+          </View>
+        );
     }
   }
 

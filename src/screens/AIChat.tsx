@@ -343,8 +343,285 @@ export default function AIChat() {
     });
   };
 
+  // Handler for showing account details
+  const handleShowAccountDetail = (data: any) => {
+    console.log('🏧 Show Account Detail triggered:', data);
+    
+    let accountData = data;
+    if (typeof data === 'string') {
+      try {
+        accountData = JSON.parse(data);
+      } catch (e) {
+        console.error('Failed to parse account detail data:', e);
+        accountData = {};
+      }
+    }
+    
+    const widgetMessage: Message = {
+      id: Date.now().toString(),
+      type: 'widget',
+      sender: 'ai',
+      widgetType: 'accountDetail',
+      flowId: `account-detail-${Date.now()}`,
+      state: {
+        account: {
+          name: accountData.name || accountData.account_name || 'Tài khoản',
+          number: accountData.number || accountData.account_number || '',
+          type: accountData.type || accountData.account_type || 'Thanh toán',
+          balance: accountData.balance || 0,
+          currency: accountData.currency || 'VND',
+          bankName: accountData.bankName || accountData.bank_name || 'PVcomBank'
+        },
+        ...accountData
+      },
+      timestamp: new Date()
+    };
+    
+    addMessage(widgetMessage);
+  };
+
+  // Handler for showing invoice details
+  const handleShowInvoiceDetail = (data: any) => {
+    console.log('🧾 Show Invoice Detail triggered:', data);
+    
+    let invoiceData = data;
+    if (typeof data === 'string') {
+      try {
+        invoiceData = JSON.parse(data);
+      } catch (e) {
+        console.error('Failed to parse invoice detail data:', e);
+        invoiceData = {};
+      }
+    }
+    
+    const widgetMessage: Message = {
+      id: Date.now().toString(),
+      type: 'widget',
+      sender: 'ai',
+      widgetType: 'invoiceDetail',
+      flowId: `invoice-detail-${Date.now()}`,
+      state: {
+        invoice: {
+          id: invoiceData.id || invoiceData.invoice_id || '',
+          customerName: invoiceData.customerName || invoiceData.customer_name || '',
+          amount: invoiceData.amount || 0,
+          dueDate: invoiceData.dueDate || invoiceData.due_date || '',
+          status: invoiceData.status || 'pending',
+          description: invoiceData.description || ''
+        },
+        ...invoiceData
+      },
+      timestamp: new Date()
+    };
+    
+    addMessage(widgetMessage);
+  };
+
+  // Handler for showing account choices
+  const handleShowAccountChoices = (data: any) => {
+    console.log('🏦 Show Account Choices triggered:', data);
+    
+    let choiceData = data;
+    if (typeof data === 'string') {
+      try {
+        choiceData = JSON.parse(data);
+      } catch (e) {
+        console.error('Failed to parse account choices data:', e);
+        choiceData = {};
+      }
+    }
+    
+    const widgetMessage: Message = {
+      id: Date.now().toString(),
+      type: 'widget',
+      sender: 'ai',
+      widgetType: 'accountChoices',
+      flowId: `account-choices-${Date.now()}`,
+      state: {
+        accounts: choiceData.accounts || [],
+        title: choiceData.title || 'Chọn tài khoản',
+        action: choiceData.action || 'select',
+        ...choiceData
+      },
+      timestamp: new Date()
+    };
+    
+    addMessage(widgetMessage);
+  };
+
+  // Handler for showing blocked accounts
+  const handleShowBlockedAccounts = (data: any) => {
+    console.log('🚫 Show Blocked Accounts triggered:', data);
+    
+    let blockedData = data;
+    if (typeof data === 'string') {
+      try {
+        blockedData = JSON.parse(data);
+      } catch (e) {
+        console.error('Failed to parse blocked accounts data:', e);
+        blockedData = {};
+      }
+    }
+    
+    const widgetMessage: Message = {
+      id: Date.now().toString(),
+      type: 'widget',
+      sender: 'ai',
+      widgetType: 'blockedAccounts',
+      flowId: `blocked-accounts-${Date.now()}`,
+      state: {
+        accounts: blockedData.accounts || [],
+        reason: blockedData.reason || 'Tài khoản bị khóa',
+        ...blockedData
+      },
+      timestamp: new Date()
+    };
+    
+    addMessage(widgetMessage);
+  };
+
+  // Handler for showing paid invoice
+  const handleShowPaidInvoice = (data: any) => {
+    console.log('✅ Show Paid Invoice triggered:', data);
+    
+    let paidData = data;
+    if (typeof data === 'string') {
+      try {
+        paidData = JSON.parse(data);
+      } catch (e) {
+        console.error('Failed to parse paid invoice data:', e);
+        paidData = {};
+      }
+    }
+    
+    const widgetMessage: Message = {
+      id: Date.now().toString(),
+      type: 'widget',
+      sender: 'ai',
+      widgetType: 'paidInvoice',
+      flowId: `paid-invoice-${Date.now()}`,
+      state: {
+        invoice: {
+          id: paidData.id || paidData.invoice_id || '',
+          amount: paidData.amount || 0,
+          paidAt: paidData.paidAt || paidData.paid_at || new Date().toISOString(),
+          paymentMethod: paidData.paymentMethod || paidData.payment_method || 'Bank Transfer'
+        },
+        ...paidData
+      },
+      timestamp: new Date()
+    };
+    
+    addMessage(widgetMessage);
+  };
+
+  // Handler for showing invoice comparison
+  const handleShowInvoiceComparison = (data: any) => {
+    console.log('📊 Show Invoice Comparison triggered:', data);
+    
+    let comparisonData = data;
+    if (typeof data === 'string') {
+      try {
+        comparisonData = JSON.parse(data);
+      } catch (e) {
+        console.error('Failed to parse invoice comparison data:', e);
+        comparisonData = {};
+      }
+    }
+    
+    const widgetMessage: Message = {
+      id: Date.now().toString(),
+      type: 'widget',
+      sender: 'ai',
+      widgetType: 'invoiceComparison',
+      flowId: `invoice-comparison-${Date.now()}`,
+      state: {
+        invoices: comparisonData.invoices || [],
+        comparisonType: comparisonData.comparisonType || comparisonData.comparison_type || 'amount',
+        ...comparisonData
+      },
+      timestamp: new Date()
+    };
+    
+    addMessage(widgetMessage);
+  };
+
+  // Handler for showing account block status
+  const handleShowAccountBlockStatus = (data: any) => {
+    console.log('🔒 Show Account Block Status triggered:', data);
+    
+    let statusData = data;
+    if (typeof data === 'string') {
+      try {
+        statusData = JSON.parse(data);
+      } catch (e) {
+        console.error('Failed to parse account block status data:', e);
+        statusData = {};
+      }
+    }
+    
+    const widgetMessage: Message = {
+      id: Date.now().toString(),
+      type: 'widget',
+      sender: 'ai',
+      widgetType: 'accountBlockStatus',
+      flowId: `account-block-status-${Date.now()}`,
+      state: {
+        account: {
+          number: statusData.accountNumber || statusData.account_number || '',
+          status: statusData.status || 'blocked',
+          reason: statusData.reason || 'Tài khoản bị khóa tạm thời',
+          blockedAt: statusData.blockedAt || statusData.blocked_at || new Date().toISOString()
+        },
+        ...statusData
+      },
+      timestamp: new Date()
+    };
+    
+    addMessage(widgetMessage);
+  };
+
+  // Handler for destination choice transaction
+  const handleDestinationChoiceTransaction = (data: any) => {
+    console.log('🎯 Destination Choice Transaction triggered:', data);
+    
+    let accountsData = data;
+    if (typeof data === 'string') {
+      try {
+        accountsData = JSON.parse(data);
+      } catch (e) {
+        console.error('Failed to parse destination choice data:', e);
+        accountsData = [];
+      }
+    }
+    
+    // Đảm bảo data là array
+    const accounts = Array.isArray(accountsData) ? accountsData : [];
+    
+    console.log('🎯 Processing accounts for choice:', accounts);
+    
+    const widgetMessage: Message = {
+      id: `destination-choice-${Date.now()}`,
+      type: 'widget',
+      sender: 'ai',
+      content: 'Chọn tài khoản nhận tiền',
+      widgetType: 'accountChoice',
+      flowId: `destination-choice-flow-${Date.now()}`,
+      state: {
+        accounts: accounts,
+        title: 'Chọn tài khoản nhận',
+        action: 'select_destination'
+      },
+      timestamp: new Date()
+    };
+    
+    console.log('🎯 Created destination choice widget:', widgetMessage);
+    setMessages(prev => [...prev, widgetMessage]);
+  };
+
   // Custom event system for React Native (replace window events)
   const customEventHandlers = useRef<Record<string, (data: any) => void>>({
+    // Existing handlers
     'livekit-show-invoice-list': handleShowInvoiceList,
     'livekit-transaction-history': handleShowTransactionHistory,
     'livekit-show-account': handleShowAccount,
@@ -353,6 +630,18 @@ export default function AIChat() {
     'livekit-show-balance': handleShowBalance,
     'livekit-rpc-transaction': handleInitTransaction,
     'livekit-done-transaction': handleDoneTransaction,
+    
+    // Widget handlers
+    'livekit-show-account-detail': handleShowAccountDetail,
+    'livekit-show-invoice-detail': handleShowInvoiceDetail,
+    'livekit-show-account-choices': handleShowAccountChoices,
+    'livekit-show-blocked-accounts': handleShowBlockedAccounts,
+    'livekit-show-paid-invoice': handleShowPaidInvoice,
+    'livekit-show-invoice-comparison': handleShowInvoiceComparison,
+    'livekit-show-account-block-status': handleShowAccountBlockStatus,
+    
+    // ✅ Thêm handler mới
+    'livekit-destination-choice-transaction': handleDestinationChoiceTransaction,
   });
 
   // Expose event trigger function to LiveKitVoiceRoom
@@ -502,7 +791,7 @@ export default function AIChat() {
 
   // Voice state effect
   useEffect(() => {
-    console.log('🔊 Voice state changed to:', voiceState);
+    // console.log('🔊 Voice state changed to:', voiceState);
 
     if (voiceState !== 'speaking' && currentAgentMessage) {
       console.log('🧹 Voice stopped, clearing any leftover streaming text.');
